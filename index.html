@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Payment App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f5f6;
+        }
+        .payment-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        button {
+            background-color: #6772e5; /* Stripe Purple */
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #5469d4;
+        }
+        #status-message {
+            margin-top: 15px;
+            color: #333;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="payment-card">
+        <h2>Make a Deposit</h2>
+        <p>Amount: <strong>$20.00</strong></p>
+        <!-- The Deposit Button -->
+        <button id="deposit-button">Deposit $20.00</button>
+        <p id="status-message"></p>
+    </div>
+
+    <script>
+        document.getElementById('deposit-button').addEventListener('click', async () => {
+            const statusMessage = document.getElementById('status-message');
+            statusMessage.innerText = "Processing deposit intent...";
+
+            try {
+                // Call your Python Flask backend
+                const response = await fetch('http://localhost:4242/create-payment-intent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        amount: 2000, // $20.00 in cents
+                        currency: 'usd' 
+                    }) 
+                });
+                
+                const data = await response.json();
+
+                if (data.clientSecret) {
+                    statusMessage.style.color = "green";
+                    statusMessage.innerText = "Success! Client Secret generated. Ready to open Stripe checkout form.";
+                    console.log("Stripe Secret:", data.clientSecret);
+                } else {
+                    statusMessage.style.color = "red";
+                    statusMessage.innerText = "Error: " + (data.error || "Unknown backend error");
+                }
+
+            } catch (error) {
+                statusMessage.style.color = "red";
+                statusMessage.innerText = "Could not connect to the backend server.";
+                console.error("Fetch error:", error);
+            }
+        });
+    </script>
+</body>
+</html>

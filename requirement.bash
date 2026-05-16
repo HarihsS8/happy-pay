@@ -1,0 +1,1 @@
+pip install Flask stripe flask-cors

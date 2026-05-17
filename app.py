@@ -1,41 +1,60 @@
 import os
-from flask import Flask, jsonify, request
-from flask_cors import CORS # Added CORS so your HTML file can talk to your Flask server
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 import stripe
 
 app = Flask(__name__)
-CORS(app) # Enables cross-origin requests for local testing
+CORS(app)
 
-# Replace this with your actual Stripe Test Secret Key
-stripe.api_key = "sk_test_51Nx..."
+# Replace with your actual Stripe Secret Key
+stripe.api_key = "sk_test_your_actual_secret_key_here"
 
-@app.route('/create-payment-intent', methods=["POST"])
+@app.route('/create-payment-intent', methods=['POST'])
 def create_payment():
     try:
         data = request.get_json()
-        amount = data.get('amount')  # Amount in cents (e.g., 2000 = $20.00)
+        amount = data.get('amount')
         currency = data.get('currency', 'usd')
 
         if not amount:
-            return jsonify({"error": "Amount is required"}), 400
+            return jsonify({'error': 'Amount is required'}), 400
 
-        # Create the PaymentIntent
         intent = stripe.PaymentIntent.create(
-            amount=amount,
+            amount=amount, 
             currency=currency,
-            # Enabling automatic methods allows both Cards and ACH Bank Deposits
-            automatic_payment_methods={
-                'enabled': True,
-            },
+            metadata={'action': 'deposit'}
         )
+        return jsonify({'clientSecret': intent.client_secret})
 
-        # Return the client secret to the frontend
+    except stripe.error.StripeError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f"Internal Server Error: {str(e)}"}), 500
+
+
+@app.route('/create-withdrawal', methods=['POST'])
+def create_withdrawal():
+    try:
+        data = request.get_json()
+        amount = data.get('amount')
+        currency = data.get('currency', 'usd')
+
+        if not amount or amount <= 0:
+            return jsonify({'error': 'Invalid withdrawal amount'}), 400
+
+        # NOTE: Real Stripe payouts require a connected Custom/Express account 
+        # using stripe.Payout.create() or stripe.Transfer.create().
+        # For this local setup, we simulate a successful outbound response.
+        
         return jsonify({
-            'clientSecret': intent['client_secret']
-        }), 200
+            'success': True,
+            'message': f"Successfully processed withdrawal of ${(amount/100):.2f}",
+            'amount': amount,
+            'currency': currency
+        })
 
     except Exception as e:
-        return jsonify(error=str(e)), 400
+        return jsonify({'error': f"Withdrawal failed: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(port=4242, debug=True)
